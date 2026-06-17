@@ -8,24 +8,20 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/tr.js"></script>
     <style>
-        :root { --bg: #0b1120; --card: #1e293b; --accent: #38bdf8; }
+        :root { --bg: #0b1120; --accent: #38bdf8; }
         body { font-family: 'Inter', sans-serif; background: var(--bg); color: #f1f5f9; padding: 20px; max-width: 500px; margin: auto; }
-        .card { background: var(--card); padding: 20px; border-radius: 20px; margin-bottom: 15px; border: 1px solid #334155; }
-        
+        .card { background: #1e293b; padding: 20px; border-radius: 20px; margin-bottom: 15px; border: 1px solid #334155; }
         /* GRAFİK İÇİN GÜVENLİ LİMİT */
-        .bar-container { display: flex; align-items: flex-end; height: 100px; gap: 5px; margin-top: 15px; padding-bottom: 5px; border-bottom: 1px solid #334155; }
+        .bar-container { display: flex; align-items: flex-end; height: 100px; gap: 5px; margin-top: 15px; border-bottom: 1px solid #334155; }
         .bar { flex: 1; background: var(--accent); border-radius: 4px 4px 0 0; min-height: 2px; max-height: 90px; display: flex; align-items: flex-end; justify-content: center; font-size: 10px; font-weight: bold; overflow: hidden; }
-        
         input { background: #0f172a !important; color: white !important; border: 1px solid #334155 !important; width: 100%; padding: 12px; border-radius: 10px; box-sizing: border-box; margin-bottom: 10px; }
         button { cursor: pointer; border: none; border-radius: 10px; padding: 12px; font-weight: bold; width: 100%; color: #0b1120; margin-top: 5px; }
     </style>
 </head>
 <body>
     <div class="card" style="text-align: center;">
-        <div id="budgetStatus">Hesaplanıyor...</div>
-        <div class="progress-container" style="background:#334155; height:10px; border-radius:5px; margin-top:10px;">
-            <div id="progressBar" style="height:100%; width:0%; background:#4ade80; transition:0.5s;"></div>
-        </div>
+        <div id="budgetStatus">Veriler yükleniyor...</div>
+        <div style="background:#334155; height:10px; border-radius:5px; margin-top:10px;"><div id="progressBar" style="height:100%; width:0%; background:#4ade80; transition:0.5s;"></div></div>
     </div>
 
     <button style="background:#ef4444; color:white; padding:18px;" onclick="sigaraIctim()">🚬 ŞİMDİ İÇTİM</button>
@@ -51,33 +47,28 @@
         const { data: sigaralar } = await supabaseClient.from('sigara_takip').select('*');
         if (!sigaralar) return;
 
-        // Grafik için günleri hesapla
-        const barChart = document.getElementById('barChart');
-        barChart.innerHTML = "";
-        
-        let maxAdet = 1; // Ölçekleme için en büyük değeri bul
-        let veriDizisi = [];
-
-        for(let i = 6; i >= 0; i--) {
-            let d = new Date(); d.setDate(d.getDate() - i);
-            let gunStr = d.toISOString().split('T')[0]; // YYYY-MM-DD formatı
-            const adet = sigaralar.filter(s => s.tarih && s.tarih.startsWith(gunStr)).length;
-            veriDizisi.push({ adet, gun: d.getDate() });
-            if(adet > maxAdet) maxAdet = adet;
-        }
-
-        // Çubukları çiz (Orantılı: Yükseklik = (adet/maxAdet) * 90px)
-        veriDizisi.forEach(v => {
-            let h = (v.adet / maxAdet) * 90; 
-            barChart.innerHTML += `<div class="bar" style="height:${h}px">${v.adet > 0 ? v.adet : ''}</div>`;
-        });
-
         // Bütçe
         const toplamHarcama = sigaralar.reduce((t, s) => t + (Number(s.fiyat || 0) / 20), 0);
         document.getElementById('budgetStatus').innerText = `${toplamHarcama.toFixed(2)} TL / 2000 TL`;
         document.getElementById('progressBar').style.width = Math.min((toplamHarcama / 2000) * 100, 100) + "%";
-    }
 
+        // Grafik: Son 7 günün tarihlerini hatasız karşılaştır
+        const barChart = document.getElementById('barChart');
+        barChart.innerHTML = "";
+        
+        for(let i = 6; i >= 0; i--) {
+            let d = new Date(); d.setDate(d.getDate() - i);
+            let gunKarsilastir = d.toLocaleDateString('tr-TR', {year: 'numeric', month: '2-digit', day: '2-digit'});
+            
+            // Sadece geçerli tarihli verileri say
+            const adet = sigaralar.filter(s => s.tarih && new Date(s.tarih).toLocaleDateString('tr-TR', {year: 'numeric', month: '2-digit', day: '2-digit'}) === gunKarsilastir).length;
+            
+            // Yüksekliği sınırla (max 90px)
+            let h = Math.min(adet * 15, 90); 
+            barChart.innerHTML += `<div class="bar" style="height:${h}px">${adet > 0 ? adet : ''}</div>`;
+        }
+    }
+    
     async function sigaraIctim() {
         const { data: fiyatlar } = await supabaseClient.from('fiyat_gecmisi').select('fiyat').order('tarih', { ascending: false }).limit(1);
         await supabaseClient.from('sigara_takip').insert([{ fiyat: (fiyatlar[0]?.fiyat || 0), tarih: new Date().toISOString() }]);
