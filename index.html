@@ -1,63 +1,42 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sigara Takip Pro</title>
+    <title>Sigara Takip</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/tr.js"></script>
     <style>
-    :root { --bg: #0b1120; --card: #1e293b; --accent: #38bdf8; }
-    body { 
-        font-family: 'Inter', sans-serif; 
-        background: var(--bg); 
-        color: #f1f5f9; 
-        margin: 0; 
-        padding: 10px; 
-        width: 100vw; /* Ekran genişliği kadar */
-        display: flex; 
-        justify-content: center; 
-    }
-    
-    .container { 
-        width: 100%; 
-        max-width: 900px; /* Bilgisayarda çok yayılmasın diye 900px limit koyduk */
-    } 
-
-    .card { background: var(--card); padding: 20px; border-radius: 20px; margin-bottom: 15px; border: 1px solid #334155; width: 100%; }
-    
-    .bar-container { display: flex; align-items: flex-end; height: 150px; gap: 5px; margin-top: 15px; border-bottom: 1px solid #334155; }
-    .bar { flex: 1; background: var(--accent); border-radius: 4px; min-height: 2px; max-height: 140px; display: flex; align-items: flex-end; justify-content: center; font-size: 12px; font-weight: bold; }
-    
-    input { background: #0f172a !important; color: white !important; border: 1px solid #334155 !important; width: 100%; padding: 16px; border-radius: 12px; font-size: 16px; box-sizing: border-box; margin-bottom: 10px; }
-    button { cursor: pointer; border: none; border-radius: 12px; padding: 16px; font-weight: bold; width: 100%; color: #0b1120; font-size: 16px; margin-top: 5px; }
-</style>
+        body { margin: 0; padding: 0; background: #0b1120; color: white; font-family: sans-serif; }
+        /* Kısıtlama yok, her yer %100 */
+        .container { width: 100%; padding: 20px; box-sizing: border-box; }
+        .card { background: #1e293b; padding: 20px; border-radius: 15px; margin-bottom: 15px; width: 100%; box-sizing: border-box; }
+        .bar-container { display: flex; align-items: flex-end; height: 150px; gap: 2px; }
+        .bar { flex: 1; background: #38bdf8; min-height: 5px; }
+        button { width: 100%; padding: 20px; border-radius: 10px; border: none; font-size: 18px; margin-bottom: 10px; cursor: pointer; }
+        input { width: 100%; padding: 15px; border-radius: 10px; border: 1px solid #334155; background: #0f172a; color: white; font-size: 16px; margin-bottom: 10px; box-sizing: border-box; }
+    </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="card" style="text-align: center;">
-        <div id="budgetStatus">Veriler yükleniyor...</div>
-        <div style="background:#334155; height:10px; border-radius:5px; margin-top:10px;">
-            <div id="progressBar" style="height:100%; width:0%; background:#4ade80; transition:0.5s;"></div>
-        </div>
+    <div class="card">
+        <div id="budgetStatus">Yükleniyor...</div>
     </div>
 
-    <button style="background:#ef4444; color:white;" onclick="sigaraIctim()">🚬 ŞİMDİ İÇTİM</button>
-    <button style="background:#475569; color:white; margin-top:10px;" onclick="sonKaydiSil()">🗑 Son Kaydı Sil</button>
+    <button style="background:#ef4444; color:white;" onclick="sigaraIctim()">SİGARA İÇTİM</button>
 
     <div class="card">
-        <h4>📊 Son 7 Günlük Analiz</h4>
+        <h4>Grafik</h4>
         <div class="bar-container" id="barChart"></div>
     </div>
 
     <div class="card">
-        <h4>🛠 Fiyat Güncelle</h4>
-        <input type="text" id="targetDate" placeholder="Tarih seçin (gg.aa.yyyy)">
-        <input type="number" id="targetPrice" placeholder="Yeni Fiyat">
-        <button style="background:var(--accent);" onclick="tarihBazliGuncelle()">Tarihi Güncelle</button>
+        <input type="text" id="targetDate" placeholder="Tarih seç">
+        <input type="number" id="targetPrice" placeholder="Fiyat">
+        <button style="background:#38bdf8;" onclick="tarihBazliGuncelle()">GÜNCELLE</button>
     </div>
 </div>
 
@@ -68,42 +47,26 @@
     async function guncelle() {
         const { data: sigaralar } = await supabaseClient.from('sigara_takip').select('*');
         if (!sigaralar) return;
-
-        const toplamHarcama = sigaralar.reduce((t, s) => t + (Number(s.fiyat || 0) / 20), 0);
-        document.getElementById('budgetStatus').innerText = `${toplamHarcama.toFixed(2)} TL / 2000 TL`;
-        document.getElementById('progressBar').style.width = Math.min((toplamHarcama / 2000) * 100, 100) + "%";
-
         const barChart = document.getElementById('barChart');
         barChart.innerHTML = "";
-        let veriler = [];
         for(let i = 6; i >= 0; i--) {
             let d = new Date(); d.setDate(d.getDate() - i);
             let gunStr = d.toISOString().split('T')[0];
             const adet = sigaralar.filter(s => s.tarih && s.tarih.startsWith(gunStr)).length;
-            veriler.push(adet);
+            let h = Math.min(adet * 20, 140);
+            barChart.innerHTML += `<div class="bar" style="height:${h}px"></div>`;
         }
-        let max = Math.max(...veriler, 1);
-        veriler.forEach(adet => {
-            let h = (adet / max) * 90;
-            barChart.innerHTML += `<div class="bar" style="height:${h}px">${adet > 0 ? adet : ''}</div>`;
-        });
     }
-
+    
     async function sigaraIctim() {
         const { data: fiyatlar } = await supabaseClient.from('fiyat_gecmisi').select('fiyat').order('tarih', { ascending: false }).limit(1);
         await supabaseClient.from('sigara_takip').insert([{ fiyat: (fiyatlar[0]?.fiyat || 0), tarih: new Date().toISOString() }]);
         guncelle();
     }
-    async function sonKaydiSil() {
-        const { data } = await supabaseClient.from('sigara_takip').select('id').order('id', { ascending: false }).limit(1);
-        if (data?.length > 0) { await supabaseClient.from('sigara_takip').delete().eq('id', data[0].id); guncelle(); }
-    }
     async function tarihBazliGuncelle() {
         const tarih = document.getElementById('targetDate').value;
-        const yeniFiyat = document.getElementById('targetPrice').value;
-        if(!tarih || !yeniFiyat) return;
         const [d, m, y] = tarih.split('.');
-        await supabaseClient.from('sigara_takip').update({ fiyat: yeniFiyat }).ilike('tarih::text', `%${y}-${m}-${d}%`);
+        await supabaseClient.from('sigara_takip').update({ fiyat: document.getElementById('targetPrice').value }).ilike('tarih::text', `%${y}-${m}-${d}%`);
         guncelle();
     }
     guncelle();
