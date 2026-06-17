@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Sigara Takip Pro - Analiz</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root { --bg: #0b1120; --card: #1e293b; --accent: #38bdf8; --danger: #ef4444; --success: #4ade80; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: #f1f5f9; padding: 20px; max-width: 500px; margin: auto; }
+        .card { background: var(--card); padding: 20px; border-radius: 20px; margin-bottom: 15px; border: 1px solid #334155; }
+        .stat-val { font-size: 28px; font-weight: 800; color: var(--accent); }
+        /* Progress Bar */
+        .progress-container { background: #334155; height: 12px; border-radius: 6px; overflow: hidden; margin-top: 10px; }
+        #progressBar { height: 100%; width: 0%; background: var(--success); transition: 0.5s; }
+        /* Basit Grafik */
+        .bar-container { display: flex; align-items: flex-end; height: 100px; gap: 10px; margin-top: 10px; }
+        .bar { flex: 1; background: var(--accent); border-radius: 4px; display: flex; align-items: flex-end; justify-content: center; font-size: 10px; color: #000; }
+        button { cursor: pointer; border: none; border-radius: 10px; padding: 12px; font-weight: bold; width: 100%; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="card" style="text-align: center;">
+        <div>Bütçe Durumu (Aylık Limit: 2000 TL)</div>
+        <div class="progress-container"><div id="progressBar"></div></div>
+        <div id="budgetStatus" style="font-size: 14px; margin-top: 5px;"></div>
+    </div>
+
+    <button class="btn-main" style="background: var(--danger); color: white; padding: 20px; border-radius: 15px; width: 100%; border: none; font-size: 18px;" onclick="sigaraIctim()">🚬 ŞİMDİ İÇTİM</button>
+    <button style="background: #475569; color: white;" onclick="sonKaydiSil()">🗑 Son Kaydı Sil</button>
+
+    <div class="card">
+        <h4>📊 Son 7 Günlük Tüketim</h4>
+        <div class="bar-container" id="barChart"></div>
+    </div>
+
+    <div class="card">
+        <h4>🛠 Fiyat Güncelle</h4>
+        <input type="date" id="targetDate" style="background:#0f172a; border:1px solid #334155; color:white; width:100%; padding:10px; border-radius:8px;">
+        <input type="number" id="targetPrice" placeholder="Yeni Fiyat" style="background:#0f172a; border:1px solid #334155; color:white; width:100%; padding:10px; border-radius:8px; margin-top:10px;">
+        <button onclick="tarihBazliGuncelle()" style="background:var(--accent);">Tarihi Güncelle</button>
+    </div>
+
+<script>
+    const supabaseClient = window.supabase.createClient('https://lkldhxxqwxdytvnegkdh.supabase.co', 'sb_publishable_TWsl4dxKFRDnFNsxs0fu2g_DUc1nqMb');
+
+    async function sigaraIctim() {
+        const { data: fiyatlar } = await supabaseClient.from('fiyat_gecmisi').select('fiyat').order('tarih', { ascending: false }).limit(1);
+        await supabaseClient.from('sigara_takip').insert([{ fiyat: (fiyatlar[0]?.fiyat || 0), tarih: new Date().toISOString() }]);
+        guncelle();
+    }
+
+    async function sonKaydiSil() {
+        if (!confirm("Son kayıt silinecek, emin misin?")) return;
+        const { data } = await supabaseClient.from('sigara_takip').select('id').order('id', { ascending: false }).limit(1);
+        await supabaseClient.from('sigara_takip').delete().eq('id', data[0].id);
+        guncelle();
+    }
+
+    async function tarihBazliGuncelle() {
+        const tarih = document.getElementById('targetDate').value;
+        const yeniFiyat = document.getElementById('targetPrice').value;
+        await supabaseClient.from('sigara_takip').update({ fiyat: yeniFiyat }).ilike('tarih::text', `%${tarih}%`);
+        guncelle();
+    }
+
+    async function guncelle() {
+        const { data: sigaralar } = await supabaseClient.from('sigara_takip').select('*');
+        if (!sigaralar) return;
+        
+        const toplamHarcama = sigaralar.reduce((t, s) => t + (Number(s.fiyat || 0) / 20), 0);
+        
+        // Bütçe Barı
+        const budgetLimit = 2000;
+        const percent = Math.min((toplamHarcama / budgetLimit) * 100, 100);
+        document.getElementById('progressBar').style.width = percent + "%";
+        document.getElementById('progressBar').style.background = percent > 90 ? 'var(--danger)' : 'var(--success)';
+        document.getElementById('budgetStatus').innerText = `${toplamHarcama.toFixed(2)} TL / ${budgetLimit} TL`;
+
+        // Grafik
+        const barChart = document.getElementById('barChart');
+        barChart.innerHTML = "";
+        const son7Gun = Array.from({length: 7}, (_, i) => {
+            let d = new Date(); d.setDate(d.getDate() - i);
+            return d.toLocaleDateString('tr-TR');
+        }).reverse();
+
+        son7Gun.forEach(gun => {
+            const adet = sigaralar.filter(s => new Date(s.tarih).toLocaleDateString('tr-TR') === gun).length;
+            barChart.innerHTML += `<div class="bar" style="height:${adet * 10}px">${adet}</div>`;
+        });
+    }
+    guncelle();
+</script>
+</body>
+</html>
