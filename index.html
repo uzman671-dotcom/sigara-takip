@@ -1,51 +1,63 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta charset="UTF-8">
-    <title>Sigara Takip Pro</title>
+    <title>Sigara Takip</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/tr.js"></script>
     <style>
-        :root { --bg: #0b1120; --card: #1e293b; --accent: #38bdf8; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); color: #f1f5f9; padding: 10px; margin: 0; display: flex; flex-direction: column; align-items: center; }
+        * { box-sizing: border-box; }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: #0b1120; 
+            color: #f1f5f9; 
+            margin: 0; 
+            padding: 20px; 
+            min-height: 100vh;
+            width: 100vw; /* Tam ekran genişliği */
+            display: flex;
+            justify-content: center;
+        }
+        .container { 
+            width: 100%; 
+            max-width: 1000px; /* Bilgisayarda çok yayılmasın diye limit, telefonda full olur */
+        }
+        .card { background: #1e293b; padding: 20px; border-radius: 20px; margin-bottom: 15px; border: 1px solid #334155; width: 100%; }
         
-        /* Genişlik kısıtlamasını kaldırdık, ekranın tamamını kullanacak */
-        .container { width: 100%; } 
-        .card { background: var(--card); padding: 15px; border-radius: 15px; margin-bottom: 10px; border: 1px solid #334155; }
+        /* Grafik: Taşmayı engellemek için esnek */
+        .bar-container { display: flex; align-items: flex-end; height: 120px; gap: 5px; margin-top: 15px; border-bottom: 1px solid #334155; }
+        .bar { flex: 1; background: #38bdf8; border-radius: 4px 4px 0 0; min-height: 5px; display: flex; align-items: flex-end; justify-content: center; font-size: 12px; font-weight: bold; overflow: hidden; }
         
-        .bar-container { display: flex; align-items: flex-end; height: 120px; gap: 4px; margin-top: 10px; border-bottom: 1px solid #334155; }
-        .bar { flex: 1; background: var(--accent); border-radius: 3px 3px 0 0; min-height: 2px; max-height: 110px; display: flex; align-items: flex-end; justify-content: center; font-size: 10px; font-weight: bold; overflow: hidden; }
-        
-        input { background: #0f172a !important; color: white !important; border: 1px solid #334155 !important; width: 100%; padding: 12px; border-radius: 8px; box-sizing: border-box; margin-bottom: 8px; }
-        button { cursor: pointer; border: none; border-radius: 8px; padding: 14px; font-weight: bold; width: 100%; color: #0b1120; margin-top: 5px; }
+        input { background: #0f172a !important; color: white !important; border: 1px solid #334155 !important; width: 100%; padding: 15px; border-radius: 10px; margin-bottom: 10px; font-size: 16px; }
+        button { cursor: pointer; border: none; border-radius: 10px; padding: 15px; font-weight: bold; width: 100%; color: #0b1120; font-size: 16px; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <div class="card" style="text-align: center;">
-            <div id="budgetStatus">Veriler yükleniyor...</div>
-            <div style="background:#334155; height:8px; border-radius:4px; margin-top:8px;"><div id="progressBar" style="height:100%; width:0%; background:#4ade80; transition:0.5s;"></div></div>
-        </div>
-
-        <button style="background:#ef4444; color:white; padding:15px;" onclick="sigaraIctim()">🚬 ŞİMDİ İÇTİM</button>
-        <button style="background:#475569; color:white; margin-top:8px;" onclick="sonKaydiSil()">🗑 Son Kaydı Sil</button>
-
-        <div class="card">
-            <h4 style="margin:0;">📊 Son 7 Günlük Analiz</h4>
-            <div class="bar-container" id="barChart"></div>
-        </div>
-
-        <div class="card">
-            <h4>🛠 Fiyat Güncelle</h4>
-            <input type="text" id="targetDate" placeholder="gg.aa.yyyy">
-            <input type="number" id="targetPrice" placeholder="Yeni Fiyat">
-            <button style="background:var(--accent);" onclick="tarihBazliGuncelle()">Tarihi Güncelle</button>
-        </div>
+<div class="container">
+    <div class="card" style="text-align: center;">
+        <div id="budgetStatus">Veriler yükleniyor...</div>
+        <div style="background:#334155; height:12px; border-radius:6px; margin-top:10px;"><div id="progressBar" style="height:100%; width:0%; background:#4ade80; transition:0.5s;"></div></div>
     </div>
+
+    <button style="background:#ef4444; color:white;" onclick="sigaraIctim()">🚬 ŞİMDİ İÇTİM</button>
+    <button style="background:#475569; color:white; margin-top:10px;" onclick="sonKaydiSil()">🗑 Son Kaydı Sil</button>
+
+    <div class="card">
+        <h4>📊 Son 7 Günlük Analiz</h4>
+        <div class="bar-container" id="barChart"></div>
+    </div>
+
+    <div class="card">
+        <h4>🛠 Fiyat Güncelle</h4>
+        <input type="text" id="targetDate" placeholder="Tarih seçin (gg.aa.yyyy)">
+        <input type="number" id="targetPrice" placeholder="Yeni Fiyat">
+        <button style="background:#38bdf8;" onclick="tarihBazliGuncelle()">Tarihi Güncelle</button>
+    </div>
+</div>
 
 <script>
     const supabaseClient = window.supabase.createClient('https://lkldhxxqwxdytvnegkdh.supabase.co', 'sb_publishable_TWsl4dxKFRDnFNsxs0fu2g_DUc1nqMb');
@@ -55,42 +67,38 @@
         const { data: sigaralar } = await supabaseClient.from('sigara_takip').select('*');
         if (!sigaralar) return;
 
-        // Bütçe
         const toplamHarcama = sigaralar.reduce((t, s) => t + (Number(s.fiyat || 0) / 20), 0);
         document.getElementById('budgetStatus').innerText = `${toplamHarcama.toFixed(2)} TL / 2000 TL`;
         document.getElementById('progressBar').style.width = Math.min((toplamHarcama / 2000) * 100, 100) + "%";
 
-        // Grafik (Sadece tarihi olanları al, 48lik dev sütun hatasını temizle)
         const barChart = document.getElementById('barChart');
         barChart.innerHTML = "";
         
-        let veriDizisi = [];
+        let veriler = [];
         for(let i = 6; i >= 0; i--) {
             let d = new Date(); d.setDate(d.getDate() - i);
             let gunStr = d.toISOString().split('T')[0];
-            // t.tarih'in null olmadığından emin oluyoruz
             const adet = sigaralar.filter(s => s.tarih && s.tarih.startsWith(gunStr)).length;
-            veriDizisi.push(adet);
+            veriler.push(adet);
         }
 
-        let maxAdet = Math.max(...veriDizisi, 1);
-        veriDizisi.forEach(adet => {
-            let h = (adet / maxAdet) * 100;
+        let max = Math.max(...veriler, 1);
+        veriler.forEach(adet => {
+            let h = (adet / max) * 100;
             barChart.innerHTML += `<div class="bar" style="height:${h}px">${adet > 0 ? adet : ''}</div>`;
         });
     }
 
+    // ... (sigaraIctim, sonKaydiSil, tarihBazliGuncelle fonksiyonlarını aynı bırak)
     async function sigaraIctim() {
         const { data: fiyatlar } = await supabaseClient.from('fiyat_gecmisi').select('fiyat').order('tarih', { ascending: false }).limit(1);
         await supabaseClient.from('sigara_takip').insert([{ fiyat: (fiyatlar[0]?.fiyat || 0), tarih: new Date().toISOString() }]);
         guncelle();
     }
-
     async function sonKaydiSil() {
         const { data } = await supabaseClient.from('sigara_takip').select('id').order('id', { ascending: false }).limit(1);
         if (data?.length > 0) { await supabaseClient.from('sigara_takip').delete().eq('id', data[0].id); guncelle(); }
     }
-
     async function tarihBazliGuncelle() {
         const tarih = document.getElementById('targetDate').value;
         const yeniFiyat = document.getElementById('targetPrice').value;
